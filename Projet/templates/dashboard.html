@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Contrôle des véhicules</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+            .status-indicator {
+                animation: pulse 2s infinite;
+            }
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+            .vehicle-card {
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                padding: 12px;
+                margin-bottom: 15px;
+                background: #f9f9f9;
+                }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+
+  <div class="min-h-screen p-4">
+    <div class="max-w-7xl mx-auto space-y-6">
+      
+      <!-- Header -->
+      <div class="bg-white rounded-lg shadow-sm p-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <i class="h-8 w-8 text-blue-600" data-lucide="car"></i>
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900">Suivi &amp; contrôle des véhicules</h1>
+              <p class="text-gray-600">Flask + SQLite système de surveillance alimenté</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <div class="flex items-center gap-2 text-lg font-mono">
+              <i class="h-5 w-5 text-gray-600" data-lucide="clock"></i>
+              <span class="text-blue-600 font-bold" id="current-time"></span>
+            </div>
+            <div class="flex items-center gap-2 text-sm text-gray-600">
+              <i class="h-4 w-4" data-lucide="calendar"></i>
+              <span id="current-date"></span>
+            </div>
+          </div>
+          <div class="text-sm">
+            <label class="mr-1 text-gray-600" for="language-switcher">Language:</label>
+            <select class="border border-gray-300 rounded px-2 py-1" id="language-switcher">
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <!-- Stats Dashboard -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-lg shadow-sm p-4">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-blue-100 rounded-lg">
+              <i class="h-6 w-6 text-blue-600" data-lucide="car"></i>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600" data-i18n="totalVehicles">Total Vehicles</p>
+              <p class="text-2xl font-bold" id="total-vehicles">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-4">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-green-100 rounded-lg">
+              <i class="h-6 w-6 text-green-600" data-lucide="play"></i>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600" data-i18n="active">Active</p>
+              <p class="text-2xl font-bold" id="active-vehicles">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-4">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-gray-100 rounded-lg">
+              <i class="h-6 w-6 text-gray-600" data-lucide="pause"></i>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600" data-i18n="parked">Parked</p>
+              <p class="text-2xl font-bold" id="parked-vehicles">0</p>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-sm p-4">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-purple-100 rounded-lg">
+              <i class="h-6 w-6 text-purple-600" data-lucide="activity"></i>
+            </div>
+            <div>
+              <p class="text-sm text-gray-600" data-i18n="todaysLogs">Today's Logs</p>
+              <p class="text-2xl font-bold" id="today-logs">0</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Vehicles Section -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-semibold" data-i18n="fleetVehicles">Fleet Vehicles</h2>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2" onclick="showAddVehicleModal()">
+              <i class="h-4 w-4" data-lucide="plus"></i> 
+              Add Vehicle 
+            </button>
+          </div>
+          <div id="vehicles-container">
+          <!-- Vehicles will be loaded here -->
+          </div>
+        </div>
+
+        <!-- Activité Log & Prédiction de panne-->
+        <div class="bg-white rounded-lg shadow-sm">
+          <div class="p-6 border-b flex items-center justify-between">
+            <h3 class="text-lg font-semibold flex items-center gap-2">
+            <i class="h-5 w-5" data-lucide="activity"></i>Journal d'activité </h3>
+            <button class="text-sm text-blue-600 hover:text-blue-800" onclick="exportLogs()">
+              Export
+            </button>
+          </div>
+          <div class="p-6">
+            <div class="space-y-3 max-h-96 overflow-y-auto" id="activity-log">
+            <!-- Logs will be loaded here -->
+            </div>
+          </div>
+          
+          <!-- Prédiction de panne -->
+          <div class="container mt-4">
+            <div class="p-6 border-b flex items-center justify-between">
+              <h3 class="text-lg font-semibold flex items-center gap-2">
+              <i class="h-5 w-5" data-lucide="brain-circuit"></i>Prédiction de panne </h3>
+            </div>
+            <div class="space-y-3 max-h-96 overflow-y-auto pt-3">
+              {% for vehicle in vehicles %}
+              <div class="card shadow-sm border-info" style="min-width: 320px; flex: 0 0 auto;">
+                <div class="card-body">
+                  <h5 class="card-title text-primary">{{ vehicle.name }}</h5>
+                  <h6 class="card-subtitle mb-2 text-muted">ID : {{ vehicle.id }}</h6>
+                  <ul class="list-group list-group-flush mb-3">
+                    <li class="list-group-item">🚗 Vitesse : <strong>{{ vehicle.speed }} km/h</strong></li>
+                    <li class="list-group-item">⛽ Carburant : <strong>{{ vehicle.fuel }}%</strong></li>
+                    <li class="list-group-item">🌡️ Température : <strong>{{ vehicle.temperature }} °C</strong></li>
+                  </ul>
+                  <p id="failure-status-{{ vehicle.id }}" class="alert alert-secondary p-2">
+                    🔄 Vérification du risque de panne...
+                  </p>
+                </div>
+                <script>
+                  fetchFailurePrediction("{{ vehicle.id }}");
+                </script>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Vehicle Modal -->
+  <div class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50" id="add-vehicle-modal">
+    <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+      <h3 class="text-lg font-semibold mb-4" data-i18n="addNewVehicle">Ajouter nouvelle Vehicle</h3>
+      <form class="space-y-4" id="add-vehicle-form">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="vehicleId">Vehicle ID</label>
+          <input class="w-full border border-gray-300 rounded-md px-3 py-2" id="vehicle-id" placeholder="Vehicle ID" required="" type="text"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="vehicleName"> Nome de Vehicle</label>
+          <input class="w-full border border-gray-300 rounded-md px-3 py-2" id="vehicle-name" placeholder=" Dacia Logan" required="" type="text"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="latitude">Latitude</label>
+          <input class="w-full border border-gray-300 rounded-md px-3 py-2" id="vehicle-lat" placeholder="30.1234" required="" step="any" type="number"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="longitude">Longitude</label>
+          <input class="w-full border border-gray-300 rounded-md px-3 py-2" id="vehicle-lng" placeholder="-5.4321" required="" step="any" type="number"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" data-i18n="address">Address</label>
+          <input class="w-full border border-gray-300 rounded-md px-3 py-2" id="vehicle-address" placeholder="Casablanca, MAR" required="" type="text"/>
+        </div>
+        <div class="flex gap-3 pt-4">
+          <button class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md font-medium" type="submit">
+                                  Ajouter Véhicle
+          </button>
+          <button class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 rounded-md font-medium" onclick="hideAddVehicleModal()" type="button">
+                                  Anuller
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<!-- Script de Prédiction de Panne -->
+
+<!-- Strécture de Projet -->
+<script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Update time display
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+            document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        // Load statistics
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                
+                document.getElementById('total-vehicles').textContent = stats.total_vehicles;
+                document.getElementById('active-vehicles').textContent = stats.active_vehicles;
+                document.getElementById('parked-vehicles').textContent = stats.parked_vehicles;
+                document.getElementById('today-logs').textContent = stats.today_logs;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Vehicle control functions
+        async function controlVehicle(vehicleId, action) {
+            try {
+                const response = await fetch(`/api/vehicle/${vehicleId}/${action}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                if (result.success) {
+                    loadVehicles();
+                    loadLogs();
+                    loadStats();
+                }
+            } catch (error) {
+                console.error('Error controlling vehicle:', error);
+            }
+        }
+
+        // Delete vehicle
+        async function deleteVehicle(vehicleId) {
+            if (!confirm('Are you sure you want to delete this vehicle?')) return;
+            
+            try {
+                const response = await fetch(`/api/vehicle/${vehicleId}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    loadVehicles();
+                    loadLogs();
+                    loadStats();
+                }
+            } catch (error) {
+                console.error('Error deleting vehicle:', error);
+            }
+        }
+
+        // Load vehicles data
+        async function loadVehicles() {
+            try {
+                const response = await fetch('/api/vehicles');
+                const vehicles = await response.json();
+                
+                const container = document.getElementById('vehicles-container');
+                container.innerHTML = '';
+                
+                Object.values(vehicles).forEach(vehicle => {
+                    const vehicleCard = createVehicleCard(vehicle);
+                    container.appendChild(vehicleCard);
+                });
+                
+                lucide.createIcons();
+            } catch (error) {
+                console.error('Error loading vehicles:', error);
+            }
+        }
+     
+        // Create vehicle card HTML
+        function createVehicleCard(vehicle) {
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg shadow-sm';
+            
+            const engineStatus = vehicle.engine_status ? 'ON' : 'OFF';
+            const lockStatus = vehicle.lock_status ? 'Locked' : 'Unlocked';
+            const statusColor = vehicle.engine_status ? 'bg-green-500' : 'bg-gray-500';
+            const lockColor = vehicle.lock_status ? 'bg-red-500' : 'bg-green-500';
+            
+            card.innerHTML = `
+                <div class="p-6 border-b flex items-center justify-between">
+                    <h3 class="text-lg font-semibold flex items-center gap-2">
+                        <i data-lucide="car" class="h-5 w-5"></i>
+                        ${vehicle.name} (${vehicle.id})
+                    </h3>
+                    <button onclick="deleteVehicle('${vehicle.id}')" class="text-red-600 hover:text-red-800">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <i data-lucide="activity" class="h-6 w-6 mx-auto mb-2 text-blue-600"></i>
+                            <div class="text-2xl font-bold">${vehicle.speed.toFixed(0)}</div>
+                            <div class="text-sm text-gray-600">mph</div>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <i data-lucide="fuel" class="h-6 w-6 mx-auto mb-2 text-green-600"></i>
+                            <div class="text-2xl font-bold">${vehicle.fuel.toFixed(0)}%</div>
+                            <div class="text-sm text-gray-600">Fuel</div>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <i data-lucide="thermometer" class="h-6 w-6 mx-auto mb-2 text-orange-600"></i>
+                            <div class="text-2xl font-bold">${vehicle.temperature.toFixed(0)}°F</div>
+                            <div class="text-sm text-gray-600">Engine</div>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <i data-lucide="map-pin" class="h-6 w-6 mx-auto mb-2 text-purple-600"></i>
+                            <div class="text-sm font-bold">${vehicle.location.address}</div>
+                            <div class="text-xs text-gray-600">Location</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor} text-white">
+                                <i data-lucide="power" class="h-3 w-3 mr-1"></i>
+                                Engine ${engineStatus}
+                            </span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${lockColor} text-white">
+                                <i data-lucide="${vehicle.lock_status ? 'lock' : 'unlock'}" class="h-3 w-3 mr-1"></i>
+                                ${lockStatus}
+                            </span>
+                        </div>
+                        <div class="text-sm text-gray-500">
+                            Last update: ${new Date(vehicle.last_update).toLocaleTimeString()}
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <button onclick="controlVehicle('${vehicle.id}', 'engine')" 
+                                class="flex items-center justify-center gap-2 px-3 py-2 ${vehicle.engine_status ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-md text-sm font-medium">
+                            <i data-lucide="power" class="h-4 w-4"></i>
+                            ${vehicle.engine_status ? 'Stop' : 'Start'}
+                        </button>
+                        <button onclick="controlVehicle('${vehicle.id}', 'lock')" 
+                                class="flex items-center justify-center gap-2 px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md text-sm font-medium">
+                            <i data-lucide="${vehicle.lock_status ? 'unlock' : 'lock'}" class="h-4 w-4"></i>
+                            ${vehicle.lock_status ? 'Unlock' : 'Lock'}
+                        </button>
+                        <button onclick="controlVehicle('${vehicle.id}', 'location')" 
+                                class="flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm font-medium">
+                            <i data-lucide="navigation" class="h-4 w-4"></i>
+                            Location
+                        </button>
+                        <button onclick="controlVehicle('${vehicle.id}', 'emergency')" 
+                                class="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium">
+                            <i data-lucide="alert-triangle" class="h-4 w-4"></i>
+                            Emergency
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // Load activity logs
+        async function loadLogs() {
+            try {
+                const response = await fetch('/api/logs');
+                const logs = await response.json();
+                
+                const container = document.getElementById('activity-log');
+                container.innerHTML = '';
+                
+                if (logs.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-center py-4">No activity logged yet</p>';
+                    return;
+                }
+                
+                logs.forEach(log => {
+                    const logEntry = document.createElement('div');
+                    logEntry.className = 'border-l-4 border-gray-200 pl-3 py-2';
+                    
+                    const statusColor = {
+                        'success': 'bg-green-500',
+                        'warning': 'bg-yellow-500',
+                        'error': 'bg-red-500'
+                    }[log.status] || 'bg-gray-500';
+                    
+                    const timestamp = new Date(log.timestamp);
+                    
+                    logEntry.innerHTML = `
+                        <div class="flex items-center gap-2 mb-1">
+                            <div class="w-2 h-2 rounded-full ${statusColor}"></div>
+                            <span class="font-medium text-sm">${log.action}</span>
+                            <span class="text-xs text-gray-500 ml-auto">${timestamp.toLocaleTimeString()}</span>
+                        </div>
+                        <p class="text-sm text-gray-600">${log.details}</p>
+                        <p class="text-xs text-gray-400">Vehicle: ${log.vehicle_id} | ${timestamp.toLocaleDateString()}</p>
+                    `;
+                    
+                    container.appendChild(logEntry);
+                });
+            } catch (error) {
+                console.error('Error loading logs:', error);
+            }
+        }
+
+        // Modal functions
+        function showAddVehicleModal() {
+            document.getElementById('add-vehicle-modal').classList.remove('hidden');
+            document.getElementById('add-vehicle-modal').classList.add('flex');
+        }
+        function hideAddVehicleModal() {
+            document.getElementById('add-vehicle-modal').classList.add('hidden');
+            document.getElementById('add-vehicle-modal').classList.remove('flex');
+            document.getElementById('add-vehicle-form').reset();
+        }
+
+        // Add vehicle form submission
+        document.getElementById('add-vehicle-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const vehicleData = {
+                id: document.getElementById('vehicle-id').value,
+                name: document.getElementById('vehicle-name').value,
+                latitude: parseFloat(document.getElementById('vehicle-lat').value),
+                longitude: parseFloat(document.getElementById('vehicle-lng').value),
+                address: document.getElementById('vehicle-address').value
+            };
+            
+            try {
+                const response = await fetch('/api/vehicle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(vehicleData)
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    hideAddVehicleModal();
+                    loadVehicles();
+                    loadLogs();
+                    loadStats();
+                } else {
+                    alert('Error adding vehicle: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Error adding vehicle:', error);
+                alert('Error adding vehicle');
+            }
+        });
+
+        // Export logs function
+        function exportLogs() {
+            window.open('/api/logs', '_blank');
+        }
+
+        function fetchFailurePrediction(vehicleId) {
+          fetch(`/api/vehicle/${vehicleId}/predict_failure`)
+            .then(res => res.json())
+            .then(data => {
+              const el = document.getElementById(`failure-status-${vehicleId}`);
+              if (!el) return;
+
+              if (data.failure_predicted) {
+                el.className = 'alert alert-danger p-2';
+                el.innerHTML = `⚠️ Risque élevé de panne (${(data.risk_probability * 100).toFixed(1)}%)`;
+              } else {
+                el.className = 'alert alert-success p-2';
+                el.innerHTML = `✅ Aucun risque détecté (${(data.risk_probability * 100).toFixed(1)}%)`;
+              }
+              console.log(data.failure_predicted)
+            })
+            .catch(err => {
+              const el = document.getElementById(`failure-status-${vehicleId}`);
+              if (el) {
+                el.className = 'alert alert-warning p-2';
+                el.innerHTML = '⚠️ Erreur IA';
+              }
+              console.error(err);
+            });
+        }
+
+        // ✅ Appeler la fonction pour chaque véhicule après chargement
+        // document.addEventListener("DOMContentLoaded", function () {
+        //   {% for vehicle in vehicles %}
+        //     fetchFailurePrediction("{{ vehicle.id }}");
+        //   {% endfor %}
+        // });
+
+        // Initialize and start auto-refresh
+        updateTime();
+        loadVehicles();
+        loadLogs();
+        loadStats();
+        
+        setInterval(updateTime, 1000);
+        setInterval(loadVehicles, 3000);
+        setInterval(loadLogs, 10000);
+        setInterval(loadStats, 30000);
+</script>
+
+<!-- Traduction -->
+<script>
+    const translations = {
+    en: {
+        addVehicle: "Add Vehicle",
+        cancel: "Cancel",
+        totalVehicles: "Total Vehicles",
+        active: "Active",
+        parked: "Parked",
+        todaysLogs: "Today's Logs",
+        fleetVehicles: "Fleet Vehicles",
+        activityLog: "Activity Log",
+        export: "Export",
+        addNewVehicle: "Add New Vehicle",
+        vehicleId: "Vehicle ID",
+        vehicleName: "Vehicle Name",
+        latitude: "Latitude",
+        longitude: "Longitude",
+        address: "Address",
+        submitAdd: "Add Vehicle",
+        engine: "Engine",
+        lock: "Lock",
+        unlock: "Unlock",
+        location: "Location",
+        emergency: "Emergency",
+        noActivity: "No activity logged yet"
+    },
+    fr: {
+        addVehicle: "Ajouter un Véhicule",
+        cancel: "Annuler",
+        totalVehicles: "Véhicules Totaux",
+        active: "Actifs",
+        parked: "Stationnés",
+        todaysLogs: "Journaux du Jour",
+        fleetVehicles: "Véhicules de Flotte",
+        activityLog: "Journal d'activité",
+        export: "Exporter",
+        addNewVehicle: "Ajouter un Nouveau Véhicule",
+        vehicleId: "ID du Véhicule",
+        vehicleName: "Nom du Véhicule",
+        latitude: "Latitude",
+        longitude: "Longitude",
+        address: "Adresse",
+        submitAdd: "Ajouter le Véhicule",
+        engine: "Moteur",
+        lock: "Verrouiller",
+        unlock: "Déverrouiller",
+        location: "Localisation",
+        emergency: "Urgence",
+        noActivity: "Aucune activité enregistrée"
+    }
+    };
+
+    let currentLang = 'en';
+    document.getElementById('language-switcher').addEventListener('change', function() {
+    currentLang = this.value;
+    applyTranslations(currentLang);
+    });
+
+    function applyTranslations(lang) {
+    const t = translations[lang];
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+        const key = el.getAttribute("data-i18n");
+        if (t[key]) el.textContent = t[key];
+    });
+    }
+</script>
+
+
+
+</body>
+
+</html>
